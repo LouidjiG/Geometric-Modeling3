@@ -1,0 +1,8 @@
+.vs/
+Debug/
+Release/
+ipch/
+*.pdf
+*.sln.dotsettings.user
+meshviewer-init/myproj/Debug/
+meshviewer-init/myproj/Release/
