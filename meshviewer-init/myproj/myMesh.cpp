@@ -70,6 +70,13 @@ bool myMesh::readFile(std::string filename)
 		{
 			float x, y, z;
 			myline >> x >> y >> z;
+			myPoint3D *p = new myPoint3D(x, y, z);
+			myVertex *v = new myVertex();
+
+			v->point = p;
+			
+			vertices.push_back(v);
+			
 			cout << "v " << x << " " << y << " " << z << endl;
 		}
 		else if (t == "mtllib") {}
@@ -78,7 +85,52 @@ bool myMesh::readFile(std::string filename)
 		else if (t == "f")
 		{
 			cout << "f"; 
-			while (myline >> u) cout << " " << atoi((u.substr(0, u.find("/"))).c_str());
+			while (myline >> u) {
+				cout << " " << atoi((u.substr(0, u.find("/"))).c_str());
+
+				int index = atoi((u.substr(0, u.find("/"))).c_str()) - 1;
+				faceids.push_back(index);
+			}
+			myFace* f = new myFace();
+			faces.push_back(f);
+
+			int nVertices = faceids.size();
+			hedges = new myHalfedge *[nVertices];
+
+			for (int i = 0; i < nVertices; i++) {
+				hedges[i] = new myHalfedge();
+				halfedges.push_back(hedges[i]);
+				hedges[i]->adjacent_face = f;
+				hedges[i]->source = vertices[faceids[i]];
+
+				vertices[faceids[i]]->originof = hedges[i];
+
+				if (i == 0) {
+					f->adjacent_halfedge = hedges[i];
+				}
+				
+			}
+
+			for (int i = 0; i < nVertices; i++) {
+				hedges[i]->next = hedges[(i + 1) % nVertices];
+				hedges[i]->prev = hedges[(i + nVertices - 1) % nVertices];
+			}
+
+			for (int i = 0; i < nVertices; i++) {
+				int vStart = faceids[i];
+				int vEnd = faceids[(i + 1) % nVertices];
+
+				it = twin_map.find({vEnd, vStart});
+
+				if (it != twin_map.end()) {
+					hedges[i]->twin = it->second;
+					it->second->twin = hedges[i];
+				}
+				else {
+					twin_map[{vStart, vEnd}] = hedges[i];
+				}
+			}
+
 			cout << endl;
 		}
 	}
