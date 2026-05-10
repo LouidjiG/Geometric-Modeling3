@@ -84,6 +84,7 @@ bool myMesh::readFile(std::string filename)
 		else if (t == "s") {}
 		else if (t == "f")
 		{
+			faceids.clear();
 			cout << "f"; 
 			while (myline >> u) {
 				cout << " " << atoi((u.substr(0, u.find("/"))).c_str());
@@ -130,11 +131,12 @@ bool myMesh::readFile(std::string filename)
 					twin_map[{vStart, vEnd}] = hedges[i];
 				}
 			}
-
+			
+			delete[] hedges;
 			cout << endl;
 		}
 	}
-
+	computeNormals();
 	checkMesh();
 	normalize();
 
@@ -144,7 +146,17 @@ bool myMesh::readFile(std::string filename)
 
 void myMesh::computeNormals()
 {
-	/**** TODO ****/
+	for (int i = 0; i < faces.size(); i++) {
+		if (faces[i]) {
+			faces[i]->computeNormal();
+		}
+	}
+
+	for (int i = 0; i < vertices.size(); i++) {
+		if (vertices[i]) {
+			vertices[i]->computeNormal();
+		}
+	}
 }
 
 void myMesh::normalize()
