@@ -247,11 +247,15 @@ void display()
 	if (drawsilhouette)
 	{
 		glLineWidth(4.0);
-		color[0] = 1.0f, color[1] = 0.0f, color[2] = 0.0f, color[3] = 1.0f;		
+		color[0] = 1.0f, color[1] = 0.0f, color[2] = 0.0f, color[3] = 1.0f;
 		glUniform4fv(glGetUniformLocation(shaderprogram, "kd"), 1, &color[0]);
 
+		double camX = camera_forward.dX;
+		double camY = camera_forward.dY;
+		double camZ = camera_forward.dZ;
+
 		vector <GLuint> silhouette_edges;
-		for (vector<myHalfedge *>::iterator it = m->halfedges.begin(); it != m->halfedges.end(); it++)
+		for (vector<myHalfedge*>::iterator it = m->halfedges.begin(); it != m->halfedges.end(); it++)
 		{
 			/**** TODO: WRITE CODE TO COMPUTE SILHOUETTE ****/
 			myHalfedge *e = (*it);
@@ -259,11 +263,14 @@ void display()
 			if ((*it)->twin == NULL) continue;
 			myVertex *v2 = (*it)->twin->source;
 
-			if ( 0 /*ADD THE CONDITION TO CHECK IF THE HALFEDGE DEFINED BY (V1, V2) IS A SILHOUETTE EDGE*/ )
+			double dot1 = (e->adjacent_face->normal->dX * camX) + (e->adjacent_face->normal->dY * camY) + (e->adjacent_face->normal->dZ * camZ);
+			double dot2 = (e->twin->adjacent_face->normal->dX * camX) + (e->twin->adjacent_face->normal->dY * camY) + (e->twin->adjacent_face->normal->dZ * camZ);
+
+			if ((dot1 > 0 && dot2 <= 0) || (dot1 <= 0 && dot2 > 0))
 			{
 				silhouette_edges.push_back(v1->index);
 				silhouette_edges.push_back(v2->index);
-			}				
+			}
 		}
 
 		GLuint silhouette_edges_buffer;
@@ -271,7 +278,7 @@ void display()
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, silhouette_edges_buffer);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, silhouette_edges.size() * sizeof(GLuint),
-			&silhouette_edges[0], GL_STATIC_DRAW);
+		&silhouette_edges[0], GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_VERTICES]);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
@@ -284,7 +291,7 @@ void display()
 		glDrawElements(GL_LINES, silhouette_edges.size(), GL_UNSIGNED_INT, 0);
 
 		glDeleteBuffers(1, &silhouette_edges_buffer);
- 	}
+	}
 
 	if (drawnormals && vaos[VAO_NORMALS])
 	{
