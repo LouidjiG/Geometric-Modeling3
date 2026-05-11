@@ -195,7 +195,7 @@ void myMesh::normalize()
 }
 
 
-void myMesh::splitFaceTRIS(myFace *f, myPoint3D *p)
+void myMesh::splitFaceTRIS(myFace* f, myPoint3D* p)
 {
 	/**** TODO ****/
 }
@@ -220,13 +220,72 @@ void myMesh::subdivisionCatmullClark()
 
 void myMesh::triangulate()
 {
-	/**** TODO ****/
+	int nbFacesInitial = faces.size();
+	for (int i = 0; i < nbFacesInitial; i++) {
+		triangulate(faces[i]);
+	}
 }
 
 //return false if already triangle, true othewise.
-bool myMesh::triangulate(myFace *f)
+bool myMesh::triangulate(myFace* f)
 {
-	/**** TODO ****/
-	return false;
+	int n = 0;
+	myHalfedge* start = f->adjacent_halfedge;
+	myHalfedge* current = start;
+
+
+	do {
+		n++;
+		current = current->next;
+	} while (current != start);
+
+
+	if (n <= 3) {
+		return false;
+	}
+
+
+	myHalfedge* p0 = f->adjacent_halfedge;
+	for (int i = 0; i < n - 3; i++) {
+		myHalfedge* p1 = p0->next;
+		myHalfedge* p2 = p1->next;
+
+		myFace* newTri = new myFace();
+		newTri->index = faces.size();
+		faces.push_back(newTri);
+
+		myHalfedge* edge = new myHalfedge();
+		myHalfedge* halfedge = new myHalfedge();
+		halfedges.push_back(edge);
+		halfedges.push_back(halfedge);
+
+
+		edge->source = p2->source;
+		halfedge->source = p0->source;
+		edge->twin = halfedge;
+		halfedge->twin = edge;
+		newTri->adjacent_halfedge = p0;
+		p0->adjacent_face = newTri;
+		p1->adjacent_face = newTri;
+		edge->adjacent_face = newTri;
+
+
+		myHalfedge* restOfMesh = p2;
+
+		p0->next = p1;     
+		p1->prev = p0;
+		p1->next = edge;   
+		edge->prev = p1;
+		edge->next = p0;   
+		p0->prev = edge;
+
+		myHalfedge* lastInFace = f->adjacent_halfedge->prev;
+		halfedge->next = restOfMesh;
+		restOfMesh->prev = halfedge;
+		halfedge->prev = lastInFace;
+		lastInFace->next = halfedge;
+	}
+
+	return true;
 }
 
