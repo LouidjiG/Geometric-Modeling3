@@ -4,6 +4,7 @@
 #include <sstream>
 #include <map>
 #include <utility>
+#include <cmath>
 #include <GL/glew.h>
 #include "myvector3d.h"
 
@@ -215,6 +216,102 @@ void myMesh::splitFaceQUADS(myFace *f, myPoint3D *p)
 void myMesh::subdivisionCatmullClark()
 {
 	/**** TODO ****/
+}
+
+
+void myMesh::SurfaceOfRevolution()
+{
+	int n = 24;
+	double pi = 3.14159;
+
+	vector< pair<double,double> > profile;
+	profile.push_back( make_pair(0.5, -1.0));
+	profile.push_back( make_pair(0.5,  1.0));
+	int k = (int)profile.size();
+
+	for (int ring = 0; ring < k; ring++)
+	{
+		double r = profile[ring].first;
+		double y = profile[ring].second;
+
+		for (int slice = 0; slice < n; slice++)
+		{
+			double angle = 2.0 * pi * (double)slice / (double)n;
+			double x = r * cos(angle);
+			double z = r * sin(angle);
+
+			myPoint3D *p = new myPoint3D(x, y, z);
+			myVertex *v = new myVertex();
+			v->point = p;
+			vertices.push_back(v);
+		}
+	}
+
+	map< pair<int,int>, myHalfedge* > twin_map;
+	map< pair<int,int>, myHalfedge* >::iterator it;
+
+	for (int ring = 0; ring < k - 1; ring++)
+	{
+		for (int slice = 0; slice < n; slice++)
+		{
+			int sliceNext = (slice + 1) % n;
+
+			int v00 = ring * n + slice;
+			int v01 = ring * n + sliceNext;
+			int v10 = (ring + 1) * n + slice;
+			int v11 = (ring + 1) * n + sliceNext;
+
+			int triangles[2][3] = {
+				{v00, v01, v11},
+				{v00, v11, v10}
+			};
+
+			for (int t = 0; t < 2; t++)
+			{
+				myFace *f = new myFace();
+				faces.push_back(f);
+
+				myHalfedge *hedges[3];
+				for (int i = 0; i < 3; i++)
+				{
+					hedges[i] = new myHalfedge();
+					halfedges.push_back(hedges[i]);
+					hedges[i]->adjacent_face = f;
+					hedges[i]->source = vertices[triangles[t][i]];
+					vertices[triangles[t][i]]->originof = hedges[i];
+
+					if (i == 0) f->adjacent_halfedge = hedges[i];
+				}
+
+				for (int i = 0; i < 3; i++)
+				{
+					hedges[i]->next = hedges[(i + 1) % 3];
+					hedges[i]->prev = hedges[(i + 2) % 3];
+				}
+
+				for (int i = 0; i < 3; i++)
+				{
+					int vStart = triangles[t][i];
+					int vEnd   = triangles[t][(i + 1) % 3];
+
+					it = twin_map.find(make_pair(vEnd, vStart));
+					if (it != twin_map.end())
+					{
+						hedges[i]->twin = it->second;
+						it->second->twin = hedges[i];
+					}
+					else
+					{
+						twin_map[make_pair(vStart, vEnd)] = hedges[i];
+					}
+				}
+			}
+		}
+	}
+
+	computeNormals();
+	checkMesh();
+	normalize();
 }
 
 

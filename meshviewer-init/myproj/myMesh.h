@@ -28,6 +28,8 @@ public:
 	void triangulate();
 	bool triangulate(myFace *);
 
+	void SurfaceOfRevolution();
+
 	void clear();
 
 	myMesh(void);
