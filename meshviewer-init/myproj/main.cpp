@@ -129,6 +129,14 @@ void menu(int item)
 			makeBuffers(m);
 			break;
 		}
+	case MENU_SIMPLIFY:
+		{
+			m->simplification();
+			clear();
+			m->computeNormals();
+			makeBuffers(m);
+			break;
+		}
 	case MENU_SPLITEDGE:
 		{
 			if (pickedpoint != NULL && closest_edge != NULL)	
@@ -378,7 +386,7 @@ void initMesh()
 	closest_face = NULL;
 
 	m = new myMesh();
-	m->SurfaceOfRevolution();
+	m->readFile("c_gear.obj");
 	makeBuffers(m);
 }
 

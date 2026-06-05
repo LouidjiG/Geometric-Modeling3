@@ -29,6 +29,9 @@ public:
 	bool triangulate(myFace *);
 
 	void SurfaceOfRevolution();
+	void cutEar(myHalfedge *);
+	void simplification();
+	void collapseEdge(myHalfedge *);
 
 	void clear();
 
