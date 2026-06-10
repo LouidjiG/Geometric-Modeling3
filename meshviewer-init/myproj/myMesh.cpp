@@ -293,7 +293,173 @@ void myMesh::splitFaceQUADS(myFace *f, myPoint3D *p)
 
 void myMesh::subdivisionCatmullClark()
 {
-	/**** TODO ****/
+	cout << "f " << faces.size() << endl;
+	cout << "v " << vertices.size() << endl;
+	cout << "h " << halfedges.size() << endl;
+
+	map <myFace*, myVertex*> face_points;
+	for (int i = 0; i < faces.size(); i++) {
+		myFace* f = faces[i];
+		double cx = 0;
+		double cy = 0;
+		double cz = 0;
+		int counter = 0;
+		myHalfedge* h = f->adjacent_halfedge;
+		myHalfedge* start = h;
+		while (h != start || counter == 0) {
+			cx += h->source->point->X;
+			cy += h->source->point->Y;
+			cz += h->source->point->Z;
+			counter++;
+			h = h->next;
+		}
+		myVertex* new_V = new myVertex();
+		new_V->point = new myPoint3D(cx / counter, cy / counter, cz / counter);
+		face_points[f] = new_V;
+	}
+
+
+	map <myHalfedge*, myVertex*> edge_points;
+	for (int i = 0; i < halfedges.size(); i++)
+	{
+
+		myHalfedge* e = halfedges[i];
+		myHalfedge* et = e->twin;
+
+		myPoint3D* p1 = e->source->point;
+		myPoint3D* p2 = et->source->point;
+
+		myPoint3D* f1 = face_points[e->adjacent_face]->point;
+		myPoint3D* f2 = face_points[et->adjacent_face]->point;
+
+		myVertex* new_V = new myVertex();
+		new_V->point = new myPoint3D((p1->X + p2->X + f1->X + f2->X) / 4.0, (p1->Y + p2->Y + f1->Y + f2->Y) / 4.0, (p1->Z + p2->Z + f1->Z + f2->Z) / 4.0);
+		edge_points[e] = new_V;
+		edge_points[et] = new_V;
+	}
+	cout << "nb edge points : " << edge_points.size() / 2 << endl;
+
+	map <myVertex*, myVertex*> new_vertices;
+	for (int i = 0; i < vertices.size(); i++) {
+		myVertex* v = vertices[i];
+		double cx = 0;
+		double cy = 0;
+		double cz = 0;
+		int counter = 0;
+		myHalfedge* h = v->originof;
+		myHalfedge* start = h;
+		while (h != start || counter == 0) {
+			cx += h->source->point->X;
+			cy += h->source->point->Y;
+			cz += h->source->point->Z;
+			counter++;
+			h = h->twin->next;
+		}
+
+		cx /= counter;
+		cy /= counter;
+		cz /= counter;
+		cout << "v " << i << " valence " << counter << endl;
+
+
+		myVertex* new_V = new myVertex();
+		new_V->point = new myPoint3D((v->point->X + cx) / 2.0, (v->point->Y + cy) / 2.0, (v->point->Z + cz) / 2.0);
+		new_vertices[v] = new_V;
+	}
+	vector<myVertex*> n_Verts;
+	vector<myHalfedge*> n_Hedges;
+	vector<myFace*> n_Faces;
+
+
+
+
+	for (int i = 0; i < vertices.size(); i++) {
+		n_Verts.push_back(new_vertices[vertices[i]]);
+	}
+	for (int i = 0; i < faces.size(); i++) {
+		n_Verts.push_back(face_points[faces[i]]);
+	}
+
+	
+	map <myHalfedge*, int> oldH;
+	for (int i = 0; i < halfedges.size(); i++) {
+		oldH[halfedges[i]] = 1;
+		oldH[halfedges[i]->twin] = 1;
+		n_Verts.push_back(edge_points[halfedges[i]]);
+
+
+	}
+	cout << n_Verts.size() << endl;
+
+
+	for (int i = 0; i < faces.size(); i++)
+	{
+		myFace* f = faces[i];
+		myVertex* fpv = face_points[f];
+		myHalfedge* start = f->adjacent_halfedge;
+		myHalfedge* h = start;
+
+		bool first = true;
+		while (h != start || first) {
+			first = false;
+
+
+			myVertex* Vnew = new_vertices[h->source];
+			myVertex* e_in = edge_points[h->prev];
+			myVertex* e_out = edge_points[h];
+
+			myFace* q = new myFace();
+			n_Faces.push_back(q);
+
+			myHalfedge* h1 = new myHalfedge();
+			myHalfedge* h2 = new myHalfedge();
+			myHalfedge* h3 = new myHalfedge();
+			myHalfedge* h4 = new myHalfedge();
+
+			n_Hedges.push_back(h1);
+			n_Hedges.push_back(h2);
+			n_Hedges.push_back(h3);
+			n_Hedges.push_back(h4);
+
+			h1->source = Vnew;
+			h2->source = e_in;
+			h3->source = fpv;
+			h4->source = e_out;
+
+			h1->next = h2;
+			h2->next = h3;
+			h3->next = h4;
+			h4->next = h1;
+
+			h1->prev = h4;
+			h2->prev = h1;
+			h3->prev = h2;
+			h4->prev = h3;
+
+			h1->adjacent_face = q;
+			h2->adjacent_face = q;
+			h3->adjacent_face = q;
+			h4->adjacent_face = q;
+			q->adjacent_halfedge = h1;
+
+			Vnew->originof = h1;
+			e_in->originof = h2;
+			fpv->originof = h3;
+			e_out->originof = h4;
+
+			h = h->next;
+
+		}
+	}
+
+	cout << "faces :  " << n_Faces.size() << endl;
+	cout << "halfeges : " << n_Hedges.size() << endl;
+	// crash quand je relance la subdivision une deuxième fois
+
+
+	vertices = n_Verts;
+	halfedges = n_Hedges;
+	faces = n_Faces;
 }
 
 

@@ -386,7 +386,7 @@ void initMesh()
 	closest_face = NULL;
 
 	m = new myMesh();
-	m->readFile("c_gear.obj");
+	m->readFile("octahedron.obj");
 	makeBuffers(m);
 }
 

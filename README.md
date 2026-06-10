@@ -12,7 +12,7 @@ Implementation of the methods required by the Geometry Modeling course.
 - [x] **Triangulation ear clipping**
 - [x] **Mesh simplification**
 - [ ] **Triangulation (expert: polygons with holes)**
-- [ ] **Catmull-Clark subdivision**
+- [~] **Catmull-Clark subdivision** (WORKING ONLY 1 TIME, close to goal, needed a bit more time)
 - [ ] **Loop algorithm**
 
 ## Usage of AI
