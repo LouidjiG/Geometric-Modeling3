@@ -293,9 +293,6 @@ void myMesh::splitFaceQUADS(myFace *f, myPoint3D *p)
 
 void myMesh::subdivisionCatmullClark()
 {
-	cout << "f " << faces.size() << endl;
-	cout << "v " << vertices.size() << endl;
-	cout << "h " << halfedges.size() << endl;
 
 	map <myFace*, myVertex*> face_points;
 	for (int i = 0; i < faces.size(); i++) {
@@ -322,8 +319,10 @@ void myMesh::subdivisionCatmullClark()
 	map <myHalfedge*, myVertex*> edge_points;
 	for (int i = 0; i < halfedges.size(); i++)
 	{
-
 		myHalfedge* e = halfedges[i];
+		if (edge_points.count(e)) {
+			continue;
+		}
 		myHalfedge* et = e->twin;
 
 		myPoint3D* p1 = e->source->point;
@@ -337,7 +336,6 @@ void myMesh::subdivisionCatmullClark()
 		edge_points[e] = new_V;
 		edge_points[et] = new_V;
 	}
-	cout << "nb edge points : " << edge_points.size() / 2 << endl;
 
 	map <myVertex*, myVertex*> new_vertices;
 	for (int i = 0; i < vertices.size(); i++) {
@@ -345,32 +343,44 @@ void myMesh::subdivisionCatmullClark()
 		double cx = 0;
 		double cy = 0;
 		double cz = 0;
+		double dx = 0;
+		double dy = 0;
+		double dz = 0;
 		int counter = 0;
 		myHalfedge* h = v->originof;
 		myHalfedge* start = h;
 		while (h != start || counter == 0) {
-			cx += h->source->point->X;
-			cy += h->source->point->Y;
-			cz += h->source->point->Z;
+			myPoint3D* fp = face_points[h->adjacent_face]->point;
+			cx += fp->X;
+			cy += fp->Y;
+			cz += fp->Z;
+
+			myPoint3D* p1 = h->source->point;
+			myPoint3D* p2 = h->next->source->point;
+
+			dx += (p1->X + p2->X) / 2.0;
+			dy += (p1->Y + p2->Y) / 2.0;
+			dz += (p1->Z + p2->Z) / 2.0;
+
 			counter++;
 			h = h->twin->next;
 		}
-
+		dx /= counter;
+		dy /= counter;
+		dz /= counter;
 		cx /= counter;
 		cy /= counter;
 		cz /= counter;
-		cout << "v " << i << " valence " << counter << endl;
+		//cout << "v " << i << " valence " << counter << endl;
 
 
 		myVertex* new_V = new myVertex();
-		new_V->point = new myPoint3D((v->point->X + cx) / 2.0, (v->point->Y + cy) / 2.0, (v->point->Z + cz) / 2.0);
+		new_V->point = new myPoint3D((cx + 2 * dx + (counter - 3) * v->point->X) / counter, (cy + 2 * dy + (counter - 3) * v->point->Y) / counter, (cz + 2 * dz + (counter - 3) * v->point->Z) / counter);
 		new_vertices[v] = new_V;
 	}
 	vector<myVertex*> n_Verts;
 	vector<myHalfedge*> n_Hedges;
 	vector<myFace*> n_Faces;
-
-
 
 
 	for (int i = 0; i < vertices.size(); i++) {
@@ -380,16 +390,21 @@ void myMesh::subdivisionCatmullClark()
 		n_Verts.push_back(face_points[faces[i]]);
 	}
 
-	
+
 	map <myHalfedge*, int> oldH;
 	for (int i = 0; i < halfedges.size(); i++) {
+		if (oldH[halfedges[i]] == 1) {
+			continue;
+		}
 		oldH[halfedges[i]] = 1;
 		oldH[halfedges[i]->twin] = 1;
 		n_Verts.push_back(edge_points[halfedges[i]]);
 
 
 	}
-	cout << n_Verts.size() << endl;
+
+	map<pair<myVertex*, myVertex*>, myHalfedge*> twin_map;
+	map<pair<myVertex*, myVertex*>, myHalfedge*>::iterator it;
 
 
 	for (int i = 0; i < faces.size(); i++)
@@ -421,10 +436,10 @@ void myMesh::subdivisionCatmullClark()
 			n_Hedges.push_back(h3);
 			n_Hedges.push_back(h4);
 
-			h1->source = Vnew;
-			h2->source = e_in;
-			h3->source = fpv;
-			h4->source = e_out;
+			h1->source = e_in;
+			h2->source = Vnew;
+			h3->source = e_out;
+			h4->source = fpv;
 
 			h1->next = h2;
 			h2->next = h3;
@@ -442,19 +457,31 @@ void myMesh::subdivisionCatmullClark()
 			h4->adjacent_face = q;
 			q->adjacent_halfedge = h1;
 
-			Vnew->originof = h1;
-			e_in->originof = h2;
-			fpv->originof = h3;
-			e_out->originof = h4;
+			e_in->originof = h1;
+			Vnew->originof = h2;
+			e_out->originof = h3;
+			fpv->originof = h4;
+
+
+			myHalfedge* arr[4] = { h1, h2, h3, h4 };
+			myVertex* src[5] = { e_in, Vnew, e_out, fpv, e_in };
+
+			for (int i = 0; i < 4; i++) {
+				it = twin_map.find(make_pair(src[i + 1], src[i]));
+				if (it != twin_map.end()) {
+					arr[i]->twin = it->second;
+					it->second->twin = arr[i];
+				}
+				else {
+					twin_map[make_pair(src[i], src[i + 1])] = arr[i];
+				}
+			}
+
 
 			h = h->next;
 
 		}
 	}
-
-	cout << "faces :  " << n_Faces.size() << endl;
-	cout << "halfeges : " << n_Hedges.size() << endl;
-	// crash quand je relance la subdivision une deuxième fois
 
 
 	vertices = n_Verts;
